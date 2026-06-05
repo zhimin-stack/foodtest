@@ -1,9 +1,56 @@
-import React, { useState, useMemo } from 'react';
-import { BookOpen, Trophy, RefreshCcw, ChevronRight, ChevronLeft, CheckCircle2, XCircle, Home, BrainCircuit, Filter, XSquare } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>保健食品概論 刷題神器</title>
+    <!-- 引入 Tailwind CSS (負責畫面排版與美化) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 React 核心函式庫 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 引入 Babel (負責在瀏覽器中編譯 JSX 語法) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        /* 隱藏滾動條但保留滾動功能，讓畫面更簡潔 */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        body { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <!-- 我們的刷題 APP 會被掛載到這個 div 裡面 -->
+    <div id="root"></div>
 
-// --- 高密度題庫資料 (共240題) ---
-// 格式：考卷年份 | 題號 | 答案 | 題目 | 選項A | 選項B | 選項C | 選項D
-const rawData = `
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        // ==========================================
+        // 1. 自訂圖示庫 (取代外部套件，確保單檔完美運行)
+        // ==========================================
+        const Icon = ({ path, className }) => (
+            <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {path}
+            </svg>
+        );
+
+        const paths = {
+            Home: <><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>,
+            BrainCircuit: <><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M9 13a4.5 4.5 0 0 0 3-4"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M12 13h4"/><path d="M12 17h4"/><path d="M16 9h2.2a2 2 0 0 1 2 2v0a2 2 0 0 0 2 2v0"/><path d="M16 13h3a2 2 0 0 1 2 2v0a2 2 0 0 0 2 2v0"/><path d="M16 17h1a2 2 0 0 0 2-2v0a2 2 0 0 1 2-2v0"/></>,
+            Filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>,
+            BookOpen: <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
+            RefreshCcw: <><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 1 0 2.5-7.5L2 9"/></>,
+            ChevronRight: <polyline points="9 18 15 12 9 6"/>,
+            ChevronLeft: <polyline points="15 18 9 12 15 6"/>,
+            Trophy: <><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></>,
+            CheckCircle2: <><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></>,
+            XCircle: <><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></>,
+            XSquare: <><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></>
+        };
+
+        // ==========================================
+        // 2. 題庫資料 (共240題)
+        // ==========================================
+        const rawData = `
 114-2|1|D|國內法規陸續為食品原料或萃取物進行使用限制及標示規定,下列哪些需標示兒童或嬰幼兒不宜使用的警語?|苦橙果實或其萃取物|桑黃菌絲體|雪蓮組織培養物|以上皆是
 114-2|2|D|有關包裝食品營養標示之規定,下列敘述何者正確? a.所有營養標示內容必須以中文及通用符號顯著標示於容器或包裝上 b.如果食品包裝或容器面積不足以完整標示營養標示,得以附加說明書或 QR CODE 方式替代 c.如果食品產品是大包裝內含小包裝,即便小包裝不會單獨流通販售,大/小包裝仍皆應有完整營養標示 d.「葉黃素」、「EPA」、「DHA」可以標示在營養標示欄位內|ab|bc|cd|ad
 114-2|3|A|目前健康食品之功效評估辦法中,以人體試食實驗為主要評估依據的是哪一個評估辦法?|輔助調節血壓功能評估|調節血糖功能評估|不易形成體脂肪功能評估|調節血脂功能評估
@@ -71,7 +118,7 @@ const rawData = `
 114-2|65|D|下列何者糖度最甜?|蔗糖|白糖|紅糖|果糖
 114-2|66|C|攝食過多的生魚片可能會造成哪一種維生素缺乏?|維生素A|維生素D|維生素B1|維生素B2
 114-2|67|A|成年女性每日礦物質需求量,由高而低依序為何?|鐵>銅> 碘 > 硒|硒>銅> 鐵> 碘|碘>銅> 鐵>硒|銅>鐵> 硒 > 碘
-114-2|68|C|有關副甲狀腺素之敘述,下列何者錯誤?|血鈣濃度降低時分泌量會增加|會刺激骨骼釋放出鈣|會促進肝臟合成1,25(OH)2D3|會促進小腸對鈣的吸收
+114-2|68|C|有关副甲狀腺素之敘述,下列何者錯誤?|血鈣濃度降低時分泌量會增加|會刺激骨骼釋放出鈣|會促進肝臟合成1,25(OH)2D3|會促進小腸對鈣的吸收
 114-2|69|A|某人隨探險隊在海上工作3年,出現關節疼痛與皮下點狀出血的症狀...請問給予的維生素C劑量可能為多少?|超過3000毫克|超過1000毫克|超過300毫克|超過100毫克
 114-2|70|C|以下有關維生素A和類胡蘿蔔素之敘述,何者正確?|維生素A攝取過量會導致中毒,類胡蘿蔔素攝取過多會導致黃疸|缺乏維生素A會得夜盲症,缺乏類胡蘿蔔素會得乾眼症|維生素A主要存在動物食品中,類胡蘿蔔素是植化素|維生素A屬抗氧化系統,類胡蘿蔔素會降低免疫功能
 114-2|71|B|下列碳水化合物中,何者屬於單醣類?|澱粉|果糖|蔗糖|菊糖
@@ -244,361 +291,363 @@ const rawData = `
 115-1|78|A|申請健康食品認證,原則上以通常加工食品形式供食之傳統食用原料應歸為第幾類安全性評估?|第一類|第二類|第三類|第四類
 115-1|79|A|長期食用大量動物肝臟、魚肝油或服用高劑量相關補充劑可能會造成何種中毒?|維生素A|維生素B|維生素C|維生素D
 115-1|80|C|依規定,如發生食品中毒時,經調查檢驗後確認引起疾病為腸炎弧菌,則該腸炎弧菌即稱為:|起始物質|病兆體|病因物質|媒介物質
-`;
+        `;
 
-// 初始化解析引擎：將高密度字串轉回陣列物件
-const questionBank = rawData.trim().split('\n').map((line, index) => {
-  const [source, qNum, ans, q, a, b, c, d] = line.split('|');
-  return {
-    id: `${source}-${qNum}`,
-    source: source,
-    question: q.trim(),
-    options: [
-      { key: 'A', text: a.trim() },
-      { key: 'B', text: b.trim() },
-      { key: 'C', text: c.trim() },
-      { key: 'D', text: d.trim() }
-    ],
-    answer: ans.trim()
-  };
-});
+        const questionBank = rawData.trim().split('\n')
+            .filter(line => line.trim() !== '')
+            .map((line, index) => {
+                const [source, qNum, ans, q, a, b, c, d] = line.split('|');
+                return {
+                    id: `${source}-${qNum}`,
+                    source: source,
+                    question: q.trim(),
+                    options: [
+                        { key: 'A', text: a.trim() },
+                        { key: 'B', text: b.trim() },
+                        { key: 'C', text: c.trim() },
+                        { key: 'D', text: d.trim() }
+                    ],
+                    answer: ans.trim()
+                };
+            });
 
-export default function App() {
-  const [appState, setAppState] = useState('home'); // home, quiz, result, review
-  const [selectedSource, setSelectedSource] = useState('全部'); 
-  const [currentQuestions, setCurrentQuestions] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [score, setScore] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
-  
-  // 新增：紀錄使用者的作答狀況
-  const [userAnswers, setUserAnswers] = useState({});
-
-  const sources = ['全部', '114-2', '114-1', '115-1'];
-
-  // 取得過濾後的題庫
-  const filteredBank = useMemo(() => {
-    if (selectedSource === '全部') return questionBank;
-    return questionBank.filter(q => q.source === selectedSource);
-  }, [selectedSource]);
-
-  // 開始測驗
-  const startQuiz = (mode) => {
-    let questions = [...filteredBank];
-    
-    if (mode === 'random') {
-      // 隨機抽測 80 題
-      questions = questions.sort(() => 0.5 - Math.random()).slice(0, 80);
-    }
-    
-    setCurrentQuestions(questions);
-    setCurrentIndex(0);
-    setScore(0);
-    setSelectedAnswer(null);
-    setUserAnswers({}); // 清空作答紀錄
-    setAppState('quiz');
-  };
-
-  // 選擇答案
-  const handleSelect = (key) => {
-    if (selectedAnswer) return;
-    
-    setSelectedAnswer(key);
-    // 紀錄該題使用者的選擇
-    setUserAnswers(prev => ({ ...prev, [currentIndex]: key }));
-    
-    if (key === currentQuestions[currentIndex].answer) {
-      setScore(s => s + 1);
-    }
-  };
-
-  // 下一題
-  const handleNext = () => {
-    if (currentIndex < currentQuestions.length - 1) {
-      setCurrentIndex(i => i + 1);
-      setSelectedAnswer(null);
-    } else {
-      setAppState('result');
-    }
-  };
-
-  // 渲染首頁
-  if (appState === 'home') {
-    return (
-      <div className="min-h-screen bg-teal-50 text-slate-800 font-sans flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden">
-          <div className="bg-teal-600 p-8 text-center text-white">
-            <BrainCircuit className="w-16 h-16 mx-auto mb-4 opacity-90" />
-            <h1 className="text-3xl font-bold mb-2">保健食品概論</h1>
-            <p className="text-teal-100">歷屆試題 240 題完整版</p>
-          </div>
-          
-          <div className="p-8">
-            <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <label className="flex items-center space-x-2 text-slate-600 font-bold mb-3">
-                <Filter className="w-4 h-4" />
-                <span>選擇想測驗的考卷：</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {sources.map(src => (
-                  <button
-                    key={src}
-                    onClick={() => setSelectedSource(src)}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                      selectedSource === src 
-                        ? 'bg-teal-600 text-white' 
-                        : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100'
-                    }`}
-                  >
-                    {src}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="text-center mb-6">
-              <p className="text-slate-500 text-sm">
-                當前範圍：<span className="font-bold text-teal-600">{filteredBank.length}</span> 題
-              </p>
-            </div>
+        // ==========================================
+        // 3. React 主程式區塊
+        // ==========================================
+        function App() {
+            const [appState, setAppState] = useState('home'); // home, quiz, result, review
+            const [selectedSource, setSelectedSource] = useState('全部'); 
+            const [currentQuestions, setCurrentQuestions] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [selectedAnswer, setSelectedAnswer] = useState(null);
             
-            <div className="space-y-4">
-              <button 
-                onClick={() => startQuiz('all')}
-                className="w-full flex items-center justify-between bg-white border-2 border-teal-500 text-teal-700 hover:bg-teal-50 p-4 rounded-2xl transition-all shadow-sm active:scale-95"
-              >
-                <div className="flex items-center space-x-3">
-                  <BookOpen className="w-6 h-6 text-teal-500" />
-                  <span className="font-bold text-lg">順序刷題 ({filteredBank.length}題)</span>
-                </div>
-                <ChevronRight className="w-5 h-5 opacity-50" />
-              </button>
+            // 紀錄使用者的作答狀況
+            const [userAnswers, setUserAnswers] = useState({});
+            const sources = ['全部', '114-2', '114-1', '115-1'];
 
-              <button 
-                onClick={() => startQuiz('random')}
-                className="w-full flex items-center justify-between bg-teal-600 hover:bg-teal-700 text-white p-4 rounded-2xl transition-all shadow-md active:scale-95"
-              >
-                <div className="flex items-center space-x-3">
-                  <RefreshCcw className="w-6 h-6" />
-                  <span className="font-bold text-lg">隨機抽測 (80題)</span>
-                </div>
-                <ChevronRight className="w-5 h-5 opacity-70" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+            // 取得過濾後的題庫
+            const filteredBank = useMemo(() => {
+                if (selectedSource === '全部') return questionBank;
+                return questionBank.filter(q => q.source === selectedSource);
+            }, [selectedSource]);
 
-  // 渲染成績頁面
-  if (appState === 'result') {
-    const percentage = Math.round((score / currentQuestions.length) * 100);
-    const wrongCount = currentQuestions.length - score;
-
-    return (
-      <div className="min-h-screen bg-teal-50 flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl text-center p-8">
-          <Trophy className={`w-20 h-20 mx-auto mb-4 ${percentage >= 70 ? 'text-yellow-400' : 'text-slate-300'}`} />
-          <h2 className="text-3xl font-bold mb-2">測驗完成</h2>
-          
-          <div className="bg-teal-50 rounded-2xl p-6 mb-8 border border-teal-100">
-            <div className="text-5xl font-black text-teal-600 mb-2">{score} <span className="text-2xl text-teal-400">/ {currentQuestions.length}</span></div>
-            <p className="text-teal-800 font-medium">正確率：{percentage}%</p>
-          </div>
-
-          <div className="space-y-3">
-            {wrongCount > 0 && (
-              <button 
-                onClick={() => setAppState('review')}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-colors active:scale-95 flex items-center justify-center space-x-2 shadow-sm"
-              >
-                <XSquare className="w-5 h-5" />
-                <span>查看錯題 ({wrongCount} 題)</span>
-              </button>
-            )}
-            
-            <button 
-              onClick={() => setAppState('home')}
-              className="w-full bg-slate-800 text-white hover:bg-slate-900 font-bold py-4 rounded-xl transition-colors active:scale-95 flex items-center justify-center space-x-2"
-            >
-              <Home className="w-5 h-5" />
-              <span>回首頁</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 渲染錯題回顧頁面
-  if (appState === 'review') {
-    // 找出所有答錯的題目
-    const wrongQuestions = currentQuestions.map((q, i) => ({
-      ...q,
-      originalIndex: i,
-      userAnswer: userAnswers[i]
-    })).filter(q => q.userAnswer !== q.answer);
-
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col p-4 md:p-8">
-        <div className="max-w-3xl w-full mx-auto">
-          
-          {/* 頂部導航 */}
-          <div className="mb-6 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm sticky top-4 z-10">
-            <button onClick={() => setAppState('result')} className="text-slate-500 hover:text-teal-600 flex items-center space-x-1 font-bold">
-              <ChevronLeft className="w-5 h-5" />
-              <span>返回成績</span>
-            </button>
-            <div className="text-lg font-black text-slate-700">錯題回顧</div>
-            <button onClick={() => setAppState('home')} className="text-slate-400 hover:text-teal-600 p-1 bg-slate-100 rounded-full">
-              <Home className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* 錯題列表 */}
-          <div className="space-y-6">
-            {wrongQuestions.map((wq, i) => (
-              <div key={i} className="bg-white rounded-3xl shadow-sm p-6 md:p-8 border border-slate-200">
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="inline-block bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1 rounded">
-                    {wq.source} 考卷
-                  </span>
-                  <span className="text-sm font-bold text-slate-400">
-                    第 {wq.originalIndex + 1} 題
-                  </span>
-                </div>
+            // 開始測驗
+            const startQuiz = (mode) => {
+                let questions = [...filteredBank];
                 
-                <h3 className="text-lg md:text-xl font-bold text-slate-800 leading-relaxed mb-6">
-                  {wq.question}
-                </h3>
-                
-                <div className="space-y-3">
-                  {wq.options.map(opt => {
-                    const isCorrect = opt.key === wq.answer;
-                    const isUserWrongChoice = opt.key === wq.userAnswer;
-                    
-                    let itemClass = "w-full text-left p-4 border-2 rounded-2xl flex items-start space-x-4 ";
-                    let icon = null;
-
-                    if (isCorrect) {
-                      itemClass += "border-green-500 bg-green-50 text-green-800";
-                      icon = <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />;
-                    } else if (isUserWrongChoice) {
-                      itemClass += "border-red-400 bg-red-50 text-red-800";
-                      icon = <XCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />;
-                    } else {
-                      itemClass += "border-slate-100 bg-slate-50 text-slate-400 opacity-60";
-                    }
-
-                    return (
-                      <div key={opt.key} className={itemClass}>
-                        <span className={`font-black flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-sm ${isCorrect ? 'bg-green-200 text-green-700' : isUserWrongChoice ? 'bg-red-200 text-red-700' : 'bg-slate-200 text-slate-500'}`}>
-                          {opt.key}
-                        </span>
-                        <span className="flex-1 font-medium text-lg pt-0.5">{opt.text}</span>
-                        {icon}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-        </div>
-      </div>
-    );
-  }
-
-  // 渲染測驗頁面
-  const currentQ = currentQuestions[currentIndex];
-  const progress = ((currentIndex) / currentQuestions.length) * 100;
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col p-4 md:p-8">
-      <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col">
-        <div className="mb-6 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
-          <button onClick={() => setAppState('home')} className="text-slate-400 hover:text-teal-600 p-1">
-            <Home className="w-6 h-6" />
-          </button>
-          <div className="flex-1 mx-4">
-            <div className="flex justify-between text-sm font-bold text-slate-500 mb-2">
-              <span>進度</span>
-              <span>{currentIndex + 1} / {currentQuestions.length}</span>
-            </div>
-            <div className="w-full bg-slate-100 rounded-full h-2.5">
-              <div className="bg-teal-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-            </div>
-          </div>
-          <div className="text-sm font-bold text-teal-600 bg-teal-50 px-3 py-1 rounded-lg">得分: {score}</div>
-        </div>
-
-        <div className="bg-white rounded-3xl shadow-md p-6 md:p-8 mb-6 flex-1 flex flex-col">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="inline-block bg-slate-100 text-slate-500 text-xs font-bold px-2 py-1 rounded mb-3">
-              {currentQ.source} 考卷
-            </span>
-          </div>
-          <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-relaxed mb-8">
-            {currentQ.question}
-          </h2>
-
-          <div className="space-y-3 mt-auto">
-            {currentQ.options.map((opt) => {
-              const isSelected = selectedAnswer === opt.key;
-              const isCorrectAnswer = currentQ.answer === opt.key;
-              
-              let btnClass = "w-full text-left p-4 border-2 rounded-2xl flex items-start space-x-4 transition-all ";
-              let icon = null;
-
-              if (!selectedAnswer) {
-                btnClass += "border-slate-200 hover:border-teal-300 hover:bg-teal-50 active:bg-teal-100";
-              } else {
-                if (isCorrectAnswer) {
-                  btnClass += "border-green-500 bg-green-50 text-green-800";
-                  icon = <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />;
-                } else if (isSelected && !isCorrectAnswer) {
-                  btnClass += "border-red-400 bg-red-50 text-red-800";
-                  icon = <XCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />;
-                } else {
-                  btnClass += "border-slate-100 bg-slate-50 opacity-50";
+                if (mode === 'random') {
+                    // 隨機抽測 80 題
+                    questions = questions.sort(() => 0.5 - Math.random()).slice(0, 80);
                 }
-              }
+                
+                setCurrentQuestions(questions);
+                setCurrentIndex(0);
+                setScore(0);
+                setSelectedAnswer(null);
+                setUserAnswers({}); 
+                setAppState('quiz');
+            };
 
-              return (
-                <button
-                  key={opt.key}
-                  onClick={() => handleSelect(opt.key)}
-                  disabled={selectedAnswer !== null}
-                  className={btnClass}
-                >
-                  <span className={`font-black flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-sm ${selectedAnswer ? (isCorrectAnswer ? 'bg-green-200 text-green-700' : isSelected ? 'bg-red-200 text-red-700' : 'bg-slate-200 text-slate-500') : 'bg-slate-100 text-slate-500'}`}>
-                    {opt.key}
-                  </span>
-                  <span className="flex-1 font-medium text-lg pt-0.5">{opt.text}</span>
-                  {icon}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+            // 選擇答案
+            const handleSelect = (key) => {
+                if (selectedAnswer) return;
+                
+                setSelectedAnswer(key);
+                setUserAnswers(prev => ({ ...prev, [currentIndex]: key }));
+                
+                if (key === currentQuestions[currentIndex].answer) {
+                    setScore(s => s + 1);
+                }
+            };
 
-        <div className="h-20 flex items-center justify-center">
-          {selectedAnswer && (
-            <button 
-              onClick={handleNext}
-              className="w-full md:w-auto bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 px-12 rounded-2xl transition-transform active:scale-95 flex items-center justify-center space-x-2 animate-in slide-in-from-bottom-4 shadow-lg"
-            >
-              <span>{currentIndex === currentQuestions.length - 1 ? '查看成績' : '下一題'}</span>
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+            // 下一題
+            const handleNext = () => {
+                if (currentIndex < currentQuestions.length - 1) {
+                    setCurrentIndex(i => i + 1);
+                    setSelectedAnswer(null);
+                } else {
+                    setAppState('result');
+                }
+            };
 
+            // 【畫面渲染：首頁】
+            if (appState === 'home') {
+                return (
+                    <div className="min-h-screen bg-teal-50 text-slate-800 flex flex-col items-center justify-center p-4">
+                        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden">
+                            <div className="bg-teal-600 p-8 text-center text-white">
+                                <Icon path={paths.BrainCircuit} className="w-16 h-16 mx-auto mb-4 opacity-90" />
+                                <h1 className="text-3xl font-bold mb-2">保健食品概論</h1>
+                                <p className="text-teal-100">歷屆試題 240 題免安裝版</p>
+                            </div>
+                            
+                            <div className="p-8">
+                                <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <label className="flex items-center space-x-2 text-slate-600 font-bold mb-3">
+                                        <Icon path={paths.Filter} className="w-4 h-4" />
+                                        <span>選擇想測驗的考卷：</span>
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {sources.map(src => (
+                                            <button
+                                                key={src}
+                                                onClick={() => setSelectedSource(src)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                                                    selectedSource === src 
+                                                    ? 'bg-teal-600 text-white' 
+                                                    : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {src}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="text-center mb-6">
+                                    <p className="text-slate-500 text-sm">
+                                        當前範圍：<span className="font-bold text-teal-600">{filteredBank.length}</span> 題
+                                    </p>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <button 
+                                        onClick={() => startQuiz('all')}
+                                        className="w-full flex items-center justify-between bg-white border-2 border-teal-500 text-teal-700 hover:bg-teal-50 p-4 rounded-2xl transition-all shadow-sm active:scale-95"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <Icon path={paths.BookOpen} className="w-6 h-6 text-teal-500" />
+                                            <span className="font-bold text-lg">順序刷題 ({filteredBank.length}題)</span>
+                                        </div>
+                                        <Icon path={paths.ChevronRight} className="w-5 h-5 opacity-50" />
+                                    </button>
+
+                                    <button 
+                                        onClick={() => startQuiz('random')}
+                                        className="w-full flex items-center justify-between bg-teal-600 hover:bg-teal-700 text-white p-4 rounded-2xl transition-all shadow-md active:scale-95"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <Icon path={paths.RefreshCcw} className="w-6 h-6" />
+                                            <span className="font-bold text-lg">隨機抽測 (80題)</span>
+                                        </div>
+                                        <Icon path={paths.ChevronRight} className="w-5 h-5 opacity-70" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 【畫面渲染：成績頁面】
+            if (appState === 'result') {
+                const percentage = Math.round((score / currentQuestions.length) * 100);
+                const wrongCount = currentQuestions.length - score;
+
+                return (
+                    <div className="min-h-screen bg-teal-50 flex flex-col items-center justify-center p-4">
+                        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl text-center p-8">
+                            <Icon path={paths.Trophy} className={`w-20 h-20 mx-auto mb-4 ${percentage >= 70 ? 'text-yellow-400' : 'text-slate-300'}`} />
+                            <h2 className="text-3xl font-bold mb-2">測驗完成</h2>
+                            
+                            <div className="bg-teal-50 rounded-2xl p-6 mb-8 border border-teal-100">
+                                <div className="text-5xl font-black text-teal-600 mb-2">{score} <span className="text-2xl text-teal-400">/ {currentQuestions.length}</span></div>
+                                <p className="text-teal-800 font-medium">正確率：{percentage}%</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                {wrongCount > 0 && (
+                                    <button 
+                                        onClick={() => setAppState('review')}
+                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-colors active:scale-95 flex items-center justify-center space-x-2 shadow-sm"
+                                    >
+                                        <Icon path={paths.XSquare} className="w-5 h-5" />
+                                        <span>查看錯題 ({wrongCount} 題)</span>
+                                    </button>
+                                )}
+                                
+                                <button 
+                                    onClick={() => setAppState('home')}
+                                    className="w-full bg-slate-800 text-white hover:bg-slate-900 font-bold py-4 rounded-xl transition-colors active:scale-95 flex items-center justify-center space-x-2"
+                                >
+                                    <Icon path={paths.Home} className="w-5 h-5" />
+                                    <span>回首頁</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 【畫面渲染：錯題回顧】
+            if (appState === 'review') {
+                const wrongQuestions = currentQuestions.map((q, i) => ({
+                    ...q,
+                    originalIndex: i,
+                    userAnswer: userAnswers[i]
+                })).filter(q => q.userAnswer !== q.answer);
+
+                return (
+                    <div className="min-h-screen bg-slate-50 flex flex-col p-4 md:p-8">
+                        <div className="max-w-3xl w-full mx-auto">
+                            <div className="mb-6 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm sticky top-4 z-10">
+                                <button onClick={() => setAppState('result')} className="text-slate-500 hover:text-teal-600 flex items-center space-x-1 font-bold">
+                                    <Icon path={paths.ChevronLeft} className="w-5 h-5" />
+                                    <span>返回成績</span>
+                                </button>
+                                <div className="text-lg font-black text-slate-700">錯題回顧</div>
+                                <button onClick={() => setAppState('home')} className="text-slate-400 hover:text-teal-600 p-1 bg-slate-100 rounded-full">
+                                    <Icon path={paths.Home} className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                {wrongQuestions.map((wq, i) => (
+                                    <div key={i} className="bg-white rounded-3xl shadow-sm p-6 md:p-8 border border-slate-200">
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <span className="inline-block bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1 rounded">
+                                                {wq.source} 考卷
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-400">
+                                                第 {wq.originalIndex + 1} 題
+                                            </span>
+                                        </div>
+                                        <h3 className="text-lg md:text-xl font-bold text-slate-800 leading-relaxed mb-6">
+                                            {wq.question}
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {wq.options.map(opt => {
+                                                const isCorrect = opt.key === wq.answer;
+                                                const isUserWrongChoice = opt.key === wq.userAnswer;
+                                                let itemClass = "w-full text-left p-4 border-2 rounded-2xl flex items-start space-x-4 ";
+                                                let icon = null;
+
+                                                if (isCorrect) {
+                                                    itemClass += "border-green-500 bg-green-50 text-green-800";
+                                                    icon = <Icon path={paths.CheckCircle2} className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />;
+                                                } else if (isUserWrongChoice) {
+                                                    itemClass += "border-red-400 bg-red-50 text-red-800";
+                                                    icon = <Icon path={paths.XCircle} className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />;
+                                                } else {
+                                                    itemClass += "border-slate-100 bg-slate-50 text-slate-400 opacity-60";
+                                                }
+
+                                                return (
+                                                    <div key={opt.key} className={itemClass}>
+                                                        <span className={`font-black flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-sm ${isCorrect ? 'bg-green-200 text-green-700' : isUserWrongChoice ? 'bg-red-200 text-red-700' : 'bg-slate-200 text-slate-500'}`}>
+                                                            {opt.key}
+                                                        </span>
+                                                        <span className="flex-1 font-medium text-lg pt-0.5">{opt.text}</span>
+                                                        {icon}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 【畫面渲染：測驗頁面】
+            const currentQ = currentQuestions[currentIndex];
+            const progress = ((currentIndex) / currentQuestions.length) * 100;
+
+            return (
+                <div className="min-h-screen bg-slate-50 flex flex-col p-4 md:p-8">
+                    <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col">
+                        <div className="mb-6 flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm">
+                            <button onClick={() => setAppState('home')} className="text-slate-400 hover:text-teal-600 p-1">
+                                <Icon path={paths.Home} className="w-6 h-6" />
+                            </button>
+                            <div className="flex-1 mx-4">
+                                <div className="flex justify-between text-sm font-bold text-slate-500 mb-2">
+                                    <span>進度</span>
+                                    <span>{currentIndex + 1} / {currentQuestions.length}</span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-2.5">
+                                    <div className="bg-teal-500 h-2.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                                </div>
+                            </div>
+                            <div className="text-sm font-bold text-teal-600 bg-teal-50 px-3 py-1 rounded-lg">得分: {score}</div>
+                        </div>
+
+                        <div className="bg-white rounded-3xl shadow-md p-6 md:p-8 mb-6 flex-1 flex flex-col">
+                            <div className="mb-2 flex items-center justify-between">
+                                <span className="inline-block bg-slate-100 text-slate-500 text-xs font-bold px-2 py-1 rounded mb-3">
+                                    {currentQ.source} 考卷
+                                </span>
+                            </div>
+                            <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-relaxed mb-8">
+                                {currentQ.question}
+                            </h2>
+
+                            <div className="space-y-3 mt-auto">
+                                {currentQ.options.map((opt) => {
+                                    const isSelected = selectedAnswer === opt.key;
+                                    const isCorrectAnswer = currentQ.answer === opt.key;
+                                    
+                                    let btnClass = "w-full text-left p-4 border-2 rounded-2xl flex items-start space-x-4 transition-all ";
+                                    let icon = null;
+
+                                    if (!selectedAnswer) {
+                                        btnClass += "border-slate-200 hover:border-teal-300 hover:bg-teal-50 active:bg-teal-100 cursor-pointer";
+                                    } else {
+                                        if (isCorrectAnswer) {
+                                            btnClass += "border-green-500 bg-green-50 text-green-800";
+                                            icon = <Icon path={paths.CheckCircle2} className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />;
+                                        } else if (isSelected && !isCorrectAnswer) {
+                                            btnClass += "border-red-400 bg-red-50 text-red-800";
+                                            icon = <Icon path={paths.XCircle} className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />;
+                                        } else {
+                                            btnClass += "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed";
+                                        }
+                                    }
+
+                                    return (
+                                        <button
+                                            key={opt.key}
+                                            onClick={() => handleSelect(opt.key)}
+                                            disabled={selectedAnswer !== null}
+                                            className={btnClass}
+                                        >
+                                            <span className={`font-black flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-sm ${selectedAnswer ? (isCorrectAnswer ? 'bg-green-200 text-green-700' : isSelected ? 'bg-red-200 text-red-700' : 'bg-slate-200 text-slate-500') : 'bg-slate-100 text-slate-500'}`}>
+                                                {opt.key}
+                                            </span>
+                                            <span className="flex-1 font-medium text-lg pt-0.5">{opt.text}</span>
+                                            {icon}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="h-20 flex items-center justify-center">
+                            {selectedAnswer && (
+                                <button 
+                                    onClick={handleNext}
+                                    className="w-full md:w-auto bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 px-12 rounded-2xl transition-transform active:scale-95 flex items-center justify-center space-x-2 shadow-lg"
+                                >
+                                    <span>{currentIndex === currentQuestions.length - 1 ? '查看成績' : '下一題'}</span>
+                                    <Icon path={paths.ChevronRight} className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 4. 掛載 React 應用程式到畫面
+        // ==========================================
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
 
 ```
